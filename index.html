@@ -34,9 +34,14 @@ td{
 }
 
 .total{
-    color:#ff9900;
+    color:#ff9900 !important;
     font-weight:bold;
     font-size:26px;
+}
+
+.total td{
+    color:#ff9900 !important;
+    padding-top:12px;
 }
 
 tr:nth-child(1){
@@ -96,10 +101,13 @@ html += '<td>' + (row[3] || '') + '</td>';
 html += '</tr>';
 }
 
+/* пустая строка */
+html += '<tr><td colspan="4">&nbsp;</td></tr>';
+
 html += '<tr class="total">';
 html += '<td></td>';
 html += '<td>ВСЕГО ЗА СТРИМ:</td>';
-html += '<td>' + total + '</td>';
+html += '<td>&nbsp;&nbsp;&nbsp;' + total + '</td>';
 html += '<td></td>';
 html += '</tr>';
 
