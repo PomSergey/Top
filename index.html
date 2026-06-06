@@ -1,24 +1,74 @@
 <!DOCTYPE html>
 <html>
+<head>
+<meta charset="utf-8">
+
+<style>
+body{
+    margin:0;
+    background:transparent;
+    color:white;
+    font-size:28px;
+    font-family:Arial,sans-serif;
+}
+
+table{
+    border-collapse:collapse;
+}
+
+td{
+    padding:6px 16px;
+}
+
+.rank{
+    font-weight:bold;
+}
+
+.amount{
+    color:#ffd700;
+}
+</style>
+
+</head>
 <body>
 
 <div id="table">Загрузка...</div>
 
 <script>
 
-fetch('https://script.google.com/macros/s/AKfycbx7L1rsVyqqRyBd4s3dcZN6am2OP7qG2-LecGClXjhpkPAgcgF4RjjWUVcbL_eOl0vR/exec')
-.then(r => r.json())
-.then(data => {
+const JSON_URL =
+'https://script.google.com/macros/s/AKfycbx7L1rsVyqqRyBd4s3dcZN6am2OP7qG2-LecGClXjhpkPAgcgF4RjjWUVcbL_eOl0vR/exec';
 
-let html = '';
+async function loadData(){
+
+const response =
+await fetch(JSON_URL + '?t=' + Date.now());
+
+const data =
+await response.json();
+
+let html = '<table>';
 
 for(const row of data){
-html += row.join(' | ') + '<br>';
+
+html += '<tr>';
+
+html += '<td class="rank">' + row[0] + '</td>';
+html += '<td>' + row[1] + '</td>';
+html += '<td class="amount">' + row[2] + '</td>';
+html += '<td>' + row[3] + '</td>';
+
+html += '</tr>';
 }
 
-document.getElementById('table').innerHTML = html;
+html += '</table>';
 
-});
+document.getElementById('table').innerHTML = html;
+}
+
+loadData();
+
+setInterval(loadData,5000);
 
 </script>
 
