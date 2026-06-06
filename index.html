@@ -1,13 +1,21 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="utf-8">
-<title>Проверка</title>
-</head>
-
 <body>
 
-<h1>ПРОВЕРКА 12345</h1>
+<div id="table">Загрузка...</div>
+
+<script>
+
+fetch('https://script.google.com/macros/s/AKfycbx7L1rsVyqqRyBd4s3dcZN6am2OP7qG2-LecGClXjhpkPAgcgF4RjjWUVcbL_eOl0vR/exec')
+.then(r => r.json())
+.then(data => {
+    document.getElementById('table').innerText = JSON.stringify(data);
+})
+.catch(err => {
+    document.getElementById('table').innerText = 'ОШИБКА: ' + err;
+});
+
+</script>
 
 </body>
 </html>
