@@ -1,10 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Top</title>
+<meta charset="utf-8">
+
+<style>
+html,body{
+margin:0;
+padding:0;
+background:transparent;
+overflow:hidden;
+}
+
+iframe{
+width:100vw;
+height:100vh;
+border:none;
+}
+</style>
+
+<script>
+setInterval(function(){
+const frame=document.getElementById('sheet');
+frame.src=frame.src.split('?')[0]+'?t='+Date.now();
+},30000);
+</script>
+
 </head>
+
 <body>
-ТЕСТ
+
+<iframe
+id="sheet"
+src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRZvGXSCuhemoDCSPr8UMTidXctj2fMYvOmb6vnOq8kMoYGBi-TAFzsENnZ3XU2quE37nUZup219Pw-/pubhtml?gid=313473458&single=true">
+</iframe>
+
 </body>
 </html>
