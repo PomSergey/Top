@@ -8,14 +8,14 @@ body{
     margin:5px;
     background:transparent;
     color:white;
-    font-size:30px;
+    font-size:15px;
     font-family:Arial,sans-serif;
 }
 
 .title{
     color:#ffd700;
     font-weight:bold;
-    margin-bottom:8px;
+    margin-bottom:4px;
 }
 
 table{
@@ -23,20 +23,12 @@ table{
 }
 
 td{
-    padding:0px 3px;
+    padding:0px 2px;
     white-space:nowrap;
 }
 
-.place{
-    min-width:55px;
-}
-
 .name{
-    min-width:260px;
-}
-
-.amount{
-    min-width:120px;
+    min-width:180px;
 }
 
 tr:nth-child(1){
@@ -83,9 +75,9 @@ if(i===2) medal='🥉';
 
 html += '<tr>';
 
-html += '<td class="place">' + medal + ' ' + (row[0] || '') + '</td>';
+html += '<td>' + medal + ' ' + (row[0] || '') + '</td>';
 html += '<td class="name">' + (row[1] || '') + '</td>';
-html += '<td class="amount">' + (row[2] || '') + '</td>';
+html += '<td>' + (row[2] || '') + '</td>';
 html += '<td>' + (row[3] || '') + '</td>';
 
 html += '</tr>';
