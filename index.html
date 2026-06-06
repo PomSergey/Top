@@ -4,37 +4,71 @@
 <meta charset="utf-8">
 
 <style>
-html,body{
-margin:0;
-padding:0;
-background:transparent;
-overflow:hidden;
+body{
+    margin:0;
+    background:transparent;
+    color:white;
+    font-size:28px;
+    font-family:Arial,sans-serif;
 }
 
-iframe{
-width:1400px;
-height:1200px;
-border:none;
+table{
+    border-collapse:collapse;
+}
 
-transform:translate(-10px,-35px);
+td{
+    padding:6px 12px;
 }
 </style>
-
-<script>
-setInterval(function(){
-const frame=document.getElementById('sheet');
-frame.src=frame.src.split('?')[0]+'?t='+Date.now();
-},30000);
-</script>
-
 </head>
 
 <body>
 
-<iframe
-id="sheet"
-src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRZvGXSCuhemoDCSPr8UMTidXctj2fMYvOmb6vnOq8kMoYGBi-TAFzsENnZ3XU2quE37nUZup219Pw-/pubhtml?gid=313473458&single=true">
-</iframe>
+<div id="table"></div>
+
+<script>
+
+const CSV_URL =
+'https://docs.google.com/spreadsheets/d/e/2PACX-1vRZvGXSCuhemoDCSPr8UMTidXctj2fMYvOmb6vnOq8kMoYGBi-TAFzsENnZ3XU2quE37nUZup219Pw-/pub?gid=313473458&single=true&output=csv';
+
+async function loadData(){
+
+const response =
+await fetch(CSV_URL + '&t=' + Date.now());
+
+const text =
+await response.text();
+
+const rows =
+text.trim().split('\n');
+
+let html = '<table>';
+
+for(const row of rows){
+
+const cols = row.split(',');
+
+html += '<tr>';
+
+for(const col of cols){
+
+html += '<td>' + col + '</td>';
+
+}
+
+html += '</tr>';
+}
+
+html += '</table>';
+
+document.getElementById('table').innerHTML = html;
+}
+
+loadData();
+
+setInterval(loadData,30000);
+
+</script>
 
 </body>
 </html>
