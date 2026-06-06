@@ -45,9 +45,13 @@ td{
 }
 
 .note{
-    color:#ff9900;
-    font-size:16px;
+    color:#00ff66;
+    font-size:17px;
     margin-top:2px;
+}
+
+.note-phone{
+    font-weight:bold;
 }
 
 tr:nth-child(1){
@@ -118,7 +122,7 @@ html += '</tr>';
 
 html += '</table>';
 
-html += '<div class="note">(донаты суммируются, на карту по номеру тел. +79800881969 или по ссылкам)</div>';
+html += '<div class="note">(донаты суммируются, на карту по номеру тел. <span class="note-phone">+79800881969</span> или по ссылкам)</div>';
 
 document.getElementById('table').innerHTML = html;
 }
