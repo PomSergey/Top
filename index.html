@@ -12,6 +12,12 @@ body{
     font-family:Arial,sans-serif;
 }
 
+.title{
+    color:#ffd700;
+    font-weight:bold;
+    margin-bottom:8px;
+}
+
 table{
     border-collapse:collapse;
 }
@@ -21,10 +27,21 @@ td{
     white-space:nowrap;
 }
 
+.place{
+    min-width:55px;
+}
+
+.name{
+    min-width:260px;
+}
+
+.amount{
+    min-width:120px;
+}
+
 tr:nth-child(1){
     color:#ffd700;
     font-weight:bold;
-    font-size:36px;
 }
 
 tr:nth-child(n+2){
@@ -34,6 +51,8 @@ tr:nth-child(n+2){
 
 </head>
 <body>
+
+<div class="title">🎁 ПОДАРКИ ИЗ ТАИЛАНДА ДОНАТЕРАМ</div>
 
 <div id="table">Загрузка...</div>
 
@@ -52,13 +71,21 @@ await response.json();
 
 let html = '<table>';
 
-for(const row of data){
+for(let i=0;i<data.length;i++){
+
+const row = data[i];
+
+let medal = '';
+
+if(i===0) medal='🥇';
+if(i===1) medal='🥈';
+if(i===2) medal='🥉';
 
 html += '<tr>';
 
-html += '<td>' + (row[0] || '') + '</td>';
-html += '<td>' + (row[1] || '') + '</td>';
-html += '<td>' + (row[2] || '') + '</td>';
+html += '<td class="place">' + medal + ' ' + (row[0] || '') + '</td>';
+html += '<td class="name">' + (row[1] || '') + '</td>';
+html += '<td class="amount">' + (row[2] || '') + '</td>';
 html += '<td>' + (row[3] || '') + '</td>';
 
 html += '</tr>';
