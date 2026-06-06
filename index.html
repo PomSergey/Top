@@ -8,7 +8,7 @@ body{
     margin:0;
     background:transparent;
     color:white;
-    font-size:28px;
+    font-size:18px;
     font-family:Arial,sans-serif;
 }
 
@@ -17,15 +17,25 @@ table{
 }
 
 td{
-    padding:6px 16px;
+    padding:2px 8px;
+    white-space:nowrap;
 }
 
 .rank{
-    font-weight:bold;
+    width:25px;
+}
+
+.name{
+    width:120px;
 }
 
 .amount{
-    color:#ffd700;
+    width:80px;
+    text-align:right;
+}
+
+.prize{
+    width:220px;
 }
 </style>
 
@@ -53,10 +63,10 @@ for(const row of data){
 
 html += '<tr>';
 
-html += '<td class="rank">' + row[0] + '</td>';
-html += '<td>' + row[1] + '</td>';
-html += '<td class="amount">' + row[2] + '</td>';
-html += '<td>' + row[3] + '</td>';
+html += '<td class="rank">' + (row[0] || '') + '</td>';
+html += '<td class="name">' + (row[1] || '') + '</td>';
+html += '<td class="amount">' + (row[2] || '') + '</td>';
+html += '<td class="prize">' + (row[3] || '') + '</td>';
 
 html += '</tr>';
 }
