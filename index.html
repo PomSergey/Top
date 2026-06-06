@@ -29,45 +29,40 @@ td{
 
 <script>
 
-const CSV_URL =
-'https://docs.google.com/spreadsheets/d/e/2PACX-1vRZvGXSCuhemoDCSPr8UMTidXctj2fMYvOmb6vnOq8kMoYGBi-TAFzsENnZ3XU2quE37nUZup219Pw-/pub?gid=313473458&single=true&output=csv';
+const JSON_URL =
+'https://script.google.com/macros/s/AKfycbx7L1rsVyqqRyBd4s3dcZN6am2OP7qG2-LecGClXjhpkPAgcgF4RjjWUVcbL_eOl0vR/exec';
 
 async function loadData(){
 
-const response =
-await fetch(CSV_URL + '&t=' + Date.now());
+    const response =
+    await fetch(JSON_URL + '?t=' + Date.now());
 
-const text =
-await response.text();
+    const data =
+    await response.json();
 
-const rows =
-text.trim().split('\n');
+    let html = '<table>';
 
-let html = '<table>';
+    for(const row of data){
 
-for(const row of rows){
+        html += '<tr>';
 
-const cols = row.split(',');
+        for(const col of row){
 
-html += '<tr>';
+            html += '<td>' + col + '</td>';
 
-for(const col of cols){
+        }
 
-html += '<td>' + col + '</td>';
+        html += '</tr>';
+    }
 
-}
+    html += '</table>';
 
-html += '</tr>';
-}
-
-html += '</table>';
-
-document.getElementById('table').innerHTML = html;
+    document.getElementById('table').innerHTML = html;
 }
 
 loadData();
 
-setInterval(loadData,30000);
+setInterval(loadData,5000);
 
 </script>
 
