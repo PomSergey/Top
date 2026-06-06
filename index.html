@@ -8,7 +8,7 @@ body{
     margin:0;
     background:transparent;
     color:white;
-    font-size:8px;
+    font-size:6px;
     font-family:Arial,sans-serif;
 }
 
@@ -17,7 +17,7 @@ table{
 }
 
 td{
-    padding:1px 3px;
+    padding:0px 2px;
     white-space:nowrap;
 }
 
@@ -34,23 +34,6 @@ tr:nth-child(2){
 tr:nth-child(3){
     color:#d8b56a;
     font-weight:bold;
-}
-
-.rank{
-    width:14px;
-}
-
-.name{
-    width:55px;
-}
-
-.amount{
-    width:45px;
-    text-align:right;
-}
-
-.prize{
-    width:110px;
 }
 </style>
 
@@ -78,10 +61,10 @@ for(const row of data){
 
 html += '<tr>';
 
-html += '<td class="rank">' + (row[0] || '') + '</td>';
-html += '<td class="name">' + (row[1] || '') + '</td>';
-html += '<td class="amount">' + (row[2] || '') + '</td>';
-html += '<td class="prize">' + (row[3] || '') + '</td>';
+html += '<td>' + (row[0] || '') + '</td>';
+html += '<td>' + (row[1] || '') + '</td>';
+html += '<td>' + (row[2] || '') + '</td>';
+html += '<td>' + (row[3] || '') + '</td>';
 
 html += '</tr>';
 }
@@ -92,7 +75,6 @@ document.getElementById('table').innerHTML = html;
 }
 
 loadData();
-
 setInterval(loadData,5000);
 
 </script>
