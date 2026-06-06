@@ -33,6 +33,12 @@ td{
     min-width:90px;
 }
 
+.total{
+    color:#ff9900;
+    font-weight:bold;
+    font-size:26px;
+}
+
 tr:nth-child(1){
     color:#ffd700;
     font-weight:bold;
@@ -63,6 +69,8 @@ await fetch(JSON_URL + '?t=' + Date.now());
 const data =
 await response.json();
 
+let total = 0;
+
 let html = '<table>';
 
 for(let i=0;i<data.length;i++){
@@ -75,6 +83,9 @@ if(i===0) medal='🥇';
 if(i===1) medal='🥈';
 if(i===2) medal='🥉';
 
+const amount = parseInt(row[2]) || 0;
+total += amount;
+
 html += '<tr>';
 
 html += '<td>' + medal + ' ' + (row[0] || '') + '</td>';
@@ -84,6 +95,13 @@ html += '<td>' + (row[3] || '') + '</td>';
 
 html += '</tr>';
 }
+
+html += '<tr class="total">';
+html += '<td></td>';
+html += '<td>ВСЕГО ЗА СТРИМ:</td>';
+html += '<td>' + total + '</td>';
+html += '<td></td>';
+html += '</tr>';
 
 html += '</table>';
 
