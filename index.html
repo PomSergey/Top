@@ -67,7 +67,7 @@ tr:nth-child(n+2){
 </head>
 <body>
 
-<div class="title"> НА ФИЛИППИНЫ: ТОП ДОНАТЕРОВ: </div>
+<div class="title">ТОП ДОНАТЕРЫ:</div>
 
 <div id="table">Загрузка...</div>
 
@@ -111,7 +111,13 @@ html += '<td>' + (row[3] || '') + '</td>';
 html += '</tr>';
 }
 
+html += '<tr class="total">';
+html += '<td colspan="2">ИТОГО:</td>';
+html += '<td>' + total.toLocaleString('ru-RU') + '</td>';
+html += '<td>₽</td>';
+html += '</tr>';
 
+html += '</table>';
 
 html += '<div class="note">(по номеру тел. <span class="note-phone">+79800881969</span> или по ссылкам)</div>';
 
