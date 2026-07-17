@@ -16,7 +16,7 @@ body{
     color:#ff9900;
     font-weight:bold;
     margin-bottom:3px;
-    font-size:20px;
+    font-size:26px;
     padding-left:50px;
 }
 
@@ -36,7 +36,7 @@ td{
 .total{
     color:#ff9900 !important;
     font-weight:bold;
-    font-size:26px;
+    font-size:20px;
 }
 
 .total td{
@@ -46,8 +46,9 @@ td{
 
 .note{
     color:#00ff66;
-    font-size:17px;
+    font-size:18px;
     margin-top:2px;
+    line-height:1.15;
 }
 
 .note-phone{
@@ -119,7 +120,13 @@ html += '</tr>';
 
 html += '</table>';
 
-html += '<div class="note">(по номеру тел. <span class="note-phone">+79800881969</span> или по ссылкам)</div>';
+html += `
+<div class="note">
+(по номеру:<br>
+<span class="note-phone">+79800881969</span><br>
+или по ссылкам)
+</div>
+`;
 
 document.getElementById('table').innerHTML = html;
 }
