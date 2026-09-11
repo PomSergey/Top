@@ -33,6 +33,17 @@ td{
     min-width:90px;
 }
 
+.vote-heading td,
+.vote td{
+    color:#ff9900 !important;
+    font-weight:bold;
+    font-size:20px;
+}
+
+.vote-heading td{
+    padding-top:12px;
+}
+
 .total{
     color:#ff9900 !important;
     font-weight:bold;
@@ -78,6 +89,8 @@ tr:nth-child(n+2){
 const JSON_URL =
 'https://script.google.com/macros/s/AKfycbx7L1rsVyqqRyBd4s3dcZN6am2OP7qG2-LecGClXjhpkPAgcgF4RjjWUVcbL_eOl0vR/exec';
 
+const destinations = ['Китай', 'Филиппины', 'Вьетнам', 'Индонезия', 'Тайвань'];
+
 async function loadData(){
 
 const response =
@@ -87,6 +100,7 @@ const data =
 await response.json();
 
 let total = 0;
+const votes = Object.fromEntries(destinations.map(country => [country, 0]));
 
 let html = '<table>';
 
@@ -103,6 +117,13 @@ if(i===2) medal='🥉';
 const amount = parseInt(row[2]) || 0;
 total += amount;
 
+const donationText = row.map(value => String(value || '')).join(' ').toLowerCase();
+for(const country of destinations){
+    if(donationText.includes(country.toLowerCase())){
+        votes[country] += amount;
+    }
+}
+
 html += '<tr>';
 
 html += '<td>' + medal + ' ' + (row[0] || '') + '</td>';
@@ -111,6 +132,18 @@ html += '<td>' + (row[2] || '') + '</td>';
 html += '<td>' + (row[3] || '') + '</td>';
 
 html += '</tr>';
+}
+
+html += '<tr class="vote-heading">';
+html += '<td colspan="4">ГОЛОСУЙ РУБЛЁМ с 01 октября я еду на:</td>';
+html += '</tr>';
+
+for(const country of destinations){
+    html += '<tr class="vote">';
+    html += '<td colspan="2">- ' + country + '</td>';
+    html += '<td>' + votes[country].toLocaleString('ru-RU') + '</td>';
+    html += '<td>₽</td>';
+    html += '</tr>';
 }
 
 html += '<tr class="total">';
