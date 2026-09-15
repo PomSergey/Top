@@ -1,181 +1,162 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
 <meta charset="utf-8">
-
 <style>
-body{
-    margin:3px;
-    background:transparent;
-    color:white;
-    font-size:24px;
-    font-family:Arial,sans-serif;
-    text-shadow:0 2px 3px rgba(0,0,0,.9);
-    -webkit-text-stroke:1px rgba(0,0,0,.9);
-    paint-order:stroke fill;
-}
-
-.title{
-    color:#ff9900;
-    font-weight:bold;
-    margin-bottom:3px;
-    font-size:26px;
-    padding-left:50px;
-}
-
-table{
-    border-collapse:collapse;
-}
-
-td{
-    padding:0px 1px;
-    white-space:nowrap;
-}
-
-.name{
-    min-width:90px;
-}
-
-.vote-heading td{
-    color:#ff3b30 !important;
-    font-weight:bold;
-    font-size:20px;
-}
-
-.vote td{
-    color:#00e5ff !important;
-    font-weight:bold;
-    font-size:20px;
-}
-
-.vote-heading td{
-    padding-top:12px;
-}
-
-.total{
-    color:#ff9900 !important;
-    font-weight:bold;
-    font-size:20px;
-}
-
-.total td{
-    color:#ff9900 !important;
-    padding-top:12px;
-}
-
-.note{
-    color:#00aa33;
-    font-size:21px;
-    margin-top:2px;
-    line-height:1.15;
-    display:inline-block;
-}
-
-.note-phone{
-    font-weight:bold;
-}
-
-tr:nth-child(1){
-    color:#ffd700;
-    font-weight:bold;
-}
-
-tr:nth-child(n+2){
-    color:white;
-}
+body{margin:3px;background:transparent;color:white;font-size:24px;font-family:Arial,sans-serif;text-shadow:0 2px 3px rgba(0,0,0,.9);-webkit-text-stroke:1px rgba(0,0,0,.9);paint-order:stroke fill;}
+.title{color:#ff9900;font-weight:bold;margin-bottom:3px;font-size:26px;padding-left:50px;}
+table{border-collapse:collapse;}
+td{padding:0px 1px;white-space:nowrap;}
+.name{min-width:90px;}
+.vote-heading td{color:#ff3b30!important;font-weight:bold;font-size:20px;padding-top:12px;}
+.vote td{color:#00e5ff!important;font-weight:bold;font-size:20px;}
+.total{color:#ff9900!important;font-weight:bold;font-size:20px;}
+.total td{color:#ff9900!important;padding-top:12px;}
+.note{color:#00aa33;font-size:21px;margin-top:2px;line-height:1.15;display:inline-block;}
+.note-phone{font-weight:bold;}
+tr:nth-child(1){color:#ffd700;font-weight:bold;}
+tr:nth-child(n+2){color:white;}
+#status{color:#ff9900;font-size:16px;}
 </style>
-
 </head>
 <body>
-
 <div class="title">ВАША ПОДДЕРЖКА:</div>
-
 <div id="table">Загрузка...</div>
-
+<div id="status" role="status"></div>
 <script>
-
-const JSON_URL =
-'https://script.google.com/macros/s/AKfycbx7L1rsVyqqRyBd4s3dcZN6am2OP7qG2-LecGClXjhpkPAgcgF4RjjWUVcbL_eOl0vR/exec';
-
+'use strict';
+const SHEET_ID = '1sAXV8JkUMcH2km5rjaGfEhV44Nq8RE2TT3OWf05anOI';
 const destinations = ['Китай', 'Филиппины', 'Вьетнам', 'Индонезия', 'Тайвань'];
+const MAX_DONORS = 10;
+const REFRESH_MS = 5000;
+
+function amountInKopecks(value){
+    const normalized = typeof value === 'number' ? value : String(value ?? '')
+        .trim().replace(/[\s\u00a0\u202f]/g, '').replace(/₽$/, '').replace(',', '.');
+    if(normalized === '' || !/^\d+(\.\d{1,2})?$/.test(String(normalized))) return null;
+    const result = Math.round(Number(normalized) * 100);
+    return Number.isSafeInteger(result) && result > 0 ? result : null;
+}
+
+function buildRanking(rows){
+    const donors = new Map();
+    const votes = Object.fromEntries(destinations.map(country => [country, 0]));
+    let total = 0;
+    let invalidCountries = 0;
+    let invalidDonations = 0;
+    for(const row of rows){
+        const name = String(row[0] ?? '').trim();
+        const rawAmount = row[1];
+        // Ignore empty input rows and unrelated notes without a donation.
+        if(!name && (rawAmount == null || rawAmount === '')) continue;
+        if(!name || rawAmount == null || rawAmount === '') continue;
+        const amount = amountInKopecks(rawAmount);
+        if(amount === null){ invalidDonations++; continue; }
+        total += amount;
+        donors.set(name, (donors.get(name) || 0) + amount);
+        const selected = String(row[2] ?? '').trim();
+        if(!selected) continue;
+        const country = destinations.find(item => item.toLocaleLowerCase('ru-RU') === selected.toLocaleLowerCase('ru-RU'));
+        if(country) votes[country] += amount;
+        else invalidCountries++;
+    }
+    return {
+        donors: [...donors].map(([name, amount]) => ({name, amount}))
+            .sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name, 'ru')),
+        countries: destinations.map((name, order) => ({name, amount:votes[name], order}))
+            .sort((a, b) => b.amount - a.amount || a.order - b.order),
+        total, invalidCountries, invalidDonations
+    };
+}
+
+function formatMoney(kopecks){
+    return (kopecks / 100).toLocaleString('ru-RU', {maximumFractionDigits:2});
+}
+
+function renderRanking(ranking){
+    const table = document.createElement('table');
+    const addCell = (row, text, span = 1, className = '') => {
+        const cell = document.createElement('td');
+        cell.textContent = text;
+        cell.colSpan = span;
+        cell.className = className;
+        row.appendChild(cell);
+    };
+    ranking.donors.slice(0, MAX_DONORS).forEach((donor, index) => {
+        const row = table.insertRow();
+        addCell(row, ((['🥇','🥈','🥉'][index] || '') + ' ' + (index + 1)).trim());
+        addCell(row, donor.name, 1, 'name');
+        addCell(row, formatMoney(donor.amount));
+        addCell(row, '₽');
+    });
+    const heading = table.insertRow();
+    heading.className = 'vote-heading';
+    addCell(heading, 'ГОЛОСУЙ РУБЛЁМ с 01 октября я еду на:', 4);
+    ranking.countries.forEach(country => {
+        const row = table.insertRow();
+        row.className = 'vote';
+        addCell(row, '- ' + country.name, 2);
+        addCell(row, formatMoney(country.amount));
+        addCell(row, '₽');
+    });
+    const total = table.insertRow();
+    total.className = 'total';
+    addCell(total, 'ИТОГО:', 2);
+    addCell(total, formatMoney(ranking.total));
+    addCell(total, '₽');
+    const note = document.createElement('div');
+    note.className = 'note';
+    note.innerHTML = '<div>(по тел.: <span class="note-phone">+79800881969</span>)</div><div style="text-align:center;">или по ссылкам</div>';
+    document.getElementById('table').replaceChildren(table, note);
+    const messages = [];
+    if(ranking.invalidCountries) messages.push('Проверьте названия стран в столбце C: ' + ranking.invalidCountries);
+    if(ranking.invalidDonations) messages.push('Проверьте суммы в столбце B: ' + ranking.invalidDonations);
+    document.getElementById('status').textContent = messages.join('. ');
+}
+
+// Google Sheets Visualization endpoint supports cross-origin JSONP queries.
+// Reference: https://developers.google.com/chart/interactive/docs/spreadsheets
+function readSheet(){
+    return new Promise((resolve, reject) => {
+        const callback = '__donationSheet_' + Date.now();
+        const script = document.createElement('script');
+        let timer;
+        const cleanup = () => {
+            clearTimeout(timer);
+            script.remove();
+            delete window[callback];
+        };
+        window[callback] = response => {
+            cleanup();
+            if(response.status !== 'ok' || !Array.isArray(response.table?.rows)){
+                reject(new Error('Google Sheets did not return a table'));
+                return;
+            }
+            resolve(response.table.rows.map(row => [0,1,2].map(i => row.c?.[i]?.v ?? '')));
+        };
+        script.onerror = () => { cleanup(); reject(new Error('Google Sheets request failed')); };
+        timer = setTimeout(() => { cleanup(); reject(new Error('Google Sheets request timed out')); }, 15000);
+        const parameters = new URLSearchParams({
+            gid:'0', range:'A2:C', headers:'0',
+            tqx:'out:json;responseHandler:' + callback,
+            t:String(Date.now())
+        });
+        script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?' + parameters;
+        document.head.appendChild(script);
+    });
+}
 
 async function loadData(){
-
-const response =
-await fetch(JSON_URL + '?t=' + Date.now());
-
-const data =
-await response.json();
-
-let total = 0;
-const votes = Object.fromEntries(destinations.map(country => [country, 0]));
-
-let html = '<table>';
-
-for(let i=0;i<data.length;i++){
-
-const row = data[i];
-
-let medal = '';
-
-if(i===0) medal='🥇';
-if(i===1) medal='🥈';
-if(i===2) medal='🥉';
-
-const amount = parseInt(row[2]) || 0;
-total += amount;
-
-const donationText = row.map(value => String(value || '')).join(' ').toLowerCase();
-for(const country of destinations){
-    if(donationText.includes(country.toLowerCase())){
-        votes[country] += amount;
+    try{
+        renderRanking(buildRanking(await readSheet()));
+    } catch(error){
+        console.warn('Не удалось обновить рейтинг', error);
+        document.getElementById('status').textContent = 'Данные временно не обновляются';
+    } finally{
+        setTimeout(loadData, REFRESH_MS);
     }
 }
-
-html += '<tr>';
-
-html += '<td>' + medal + ' ' + (row[0] || '') + '</td>';
-html += '<td class="name">' + (row[1] || '') + '</td>';
-html += '<td>' + (row[2] || '') + '</td>';
-html += '<td>' + (row[3] || '') + '</td>';
-
-html += '</tr>';
-}
-
-html += '<tr class="vote-heading">';
-html += '<td colspan="4">ГОЛОСУЙ РУБЛЁМ с 01 октября я еду на:</td>';
-html += '</tr>';
-
-for(const country of destinations){
-    html += '<tr class="vote">';
-    html += '<td colspan="2">- ' + country + '</td>';
-    html += '<td>' + votes[country].toLocaleString('ru-RU') + '</td>';
-    html += '<td>₽</td>';
-    html += '</tr>';
-}
-
-html += '<tr class="total">';
-html += '<td colspan="2">ИТОГО:</td>';
-html += '<td>' + total.toLocaleString('ru-RU') + '</td>';
-html += '<td>₽</td>';
-html += '</tr>';
-
-html += '</table>';
-
-html += `
-<div class="note">
-<div>(по тел.: <span class="note-phone">+79800881969</span>)</div>
-<div style="text-align:center;">или по ссылкам</div>
-</div>
-`;
-
-document.getElementById('table').innerHTML = html;
-}
-
 loadData();
-setInterval(loadData,5000);
-
 </script>
-
 </body>
 </html>
