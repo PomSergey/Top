@@ -24,11 +24,14 @@ table{border-collapse:collapse;}
 td{padding:0 1px;white-space:nowrap;}
 .name{min-width:90px;}
 .vote-heading td{
-    color:#ffe066!important;
+    color:#ff9900!important;
     font-weight:bold;
-    font-size:20px;
+    font-size:16px;
+    line-height:1.05;
     padding-top:12px;
+    white-space:normal;
 }
+.vote-countdown{font-size:12px;margin-left:4px;}
 .vote td{
     color:#00e5ff!important;
     font-weight:bold;
@@ -61,6 +64,7 @@ td{padding:0 1px;white-space:nowrap;}
     font-size:20px;
 }
 .total td{color:#ff9900!important;padding-top:12px;}
+.total-value{margin-left:8px;}
 .note{
     color:#00aa33;
     font-size:21px;
@@ -155,8 +159,7 @@ function votingHeading(now = new Date()){
         : (days === 1 ? 'ОСТАЛСЯ ' : 'ОСТАЛОСЬ ') +
             days + ' ' + russianDayWord(days);
 
-    return 'ГОЛОСУЙ РУБЛЁМ. СЛЕДУЮЩАЯ СТРАНА (' +
-        countdown + '):';
+    return countdown;
 }
 
 function calendarDateKey(year, month, day){
@@ -329,6 +332,7 @@ function renderRanking(ranking){
         cell.colSpan = span;
         cell.className = className;
         row.appendChild(cell);
+        return cell;
     };
 
     ranking.donors.slice(0, MAX_DONORS).forEach((donor, index) => {
@@ -343,7 +347,15 @@ function renderRanking(ranking){
 
     const heading = table.insertRow();
     heading.className = 'vote-heading';
-    addCell(heading, votingHeading(), 4);
+    const headingCell = addCell(
+        heading,
+        'ГОЛОСУЙ РУБЛЁМ. СЛЕДУЮЩАЯ СТРАНА',
+        4
+    );
+    const countdown = document.createElement('span');
+    countdown.className = 'vote-countdown';
+    countdown.textContent = '(' + votingHeading() + '):';
+    headingCell.appendChild(countdown);
 
     const maxCountryAmount = Math.max(
         0,
@@ -377,10 +389,11 @@ function renderRanking(ranking){
 
     const total = table.insertRow();
     total.className = 'total';
-
-    addCell(total, 'ИТОГО ЗА СЕГОДНЯ:', 2);
-    addCell(total, formatMoney(ranking.total));
-    addCell(total, '₽');
+    const totalCell = addCell(total, 'ИТОГО ЗА СЕГОДНЯ:', 4);
+    const totalValue = document.createElement('span');
+    totalValue.className = 'total-value';
+    totalValue.textContent = formatMoney(ranking.total) + ' ₽';
+    totalCell.appendChild(totalValue);
 
     const note = document.createElement('div');
     note.className = 'note';
