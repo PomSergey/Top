@@ -34,6 +34,25 @@ td{padding:0 1px;white-space:nowrap;}
     font-weight:bold;
     font-size:20px;
 }
+.vote-name{min-width:180px;}
+.vote-bar-cell{width:250px;padding-left:10px;}
+.vote-bar{
+    width:250px;
+    height:17px;
+    overflow:hidden;
+    border:2px solid #00e5ff;
+    border-radius:10px;
+    background:rgba(0,229,255,.16);
+    box-shadow:0 2px 3px rgba(0,0,0,.9);
+}
+.vote-bar-fill{
+    height:100%;
+    min-width:0;
+    border-radius:7px;
+    background:linear-gradient(90deg,#00e5ff,#38ff89);
+    box-shadow:0 0 8px rgba(0,229,255,.9);
+    transition:width .5s ease;
+}
 .total{
     color:#ff9900!important;
     font-weight:bold;
@@ -72,14 +91,17 @@ const destinations = [
 const MAX_DONORS = 10;
 const REFRESH_MS = 5000;
 const DAY_TIME_ZONE = 'Europe/Moscow';
+const DAY_START_HOUR = 4;
 
 function moscowDateKey(now = new Date()){
+    // Новый донат-день начинается в 04:00 по Москве.
+    const shifted = new Date(now.getTime() - DAY_START_HOUR * 60 * 60 * 1000);
     const parts = new Intl.DateTimeFormat('en-GB', {
         timeZone:DAY_TIME_ZONE,
         year:'numeric',
         month:'2-digit',
         day:'2-digit'
-    }).formatToParts(now);
+    }).formatToParts(shifted);
 
     const values = Object.fromEntries(
         parts.map(part => [part.type, part.value])
@@ -274,13 +296,34 @@ function renderRanking(ranking){
     heading.className = 'vote-heading';
     addCell(heading, 'ГОЛОСУЙ РУБЛЁМ с 01 октября я еду на:', 4);
 
+    const maxCountryAmount = Math.max(
+        0,
+        ...ranking.countries.map(country => country.amount)
+    );
+
     ranking.countries.forEach(country => {
         const row = table.insertRow();
         row.className = 'vote';
 
-        addCell(row, '- ' + country.name, 2);
-        addCell(row, formatMoney(country.amount));
-        addCell(row, '₽');
+        addCell(row, '- ' + country.name, 2, 'vote-name');
+
+        const barCell = document.createElement('td');
+        barCell.colSpan = 2;
+        barCell.className = 'vote-bar-cell';
+
+        const bar = document.createElement('div');
+        bar.className = 'vote-bar';
+        bar.setAttribute('aria-label', 'Доля голосов за ' + country.name);
+
+        const fill = document.createElement('div');
+        fill.className = 'vote-bar-fill';
+        fill.style.width = maxCountryAmount
+            ? (country.amount / maxCountryAmount * 100).toFixed(1) + '%'
+            : '0%';
+
+        bar.appendChild(fill);
+        barCell.appendChild(bar);
+        row.appendChild(barCell);
     });
 
     const total = table.insertRow();
@@ -316,7 +359,7 @@ function renderRanking(ranking){
 
     if(ranking.invalidDates){
         messages.push(
-            'Укажите дату ДД.ММ.ГГГГ в столбце D: ' +
+            'Не проставилась служебная дата: ' +
             ranking.invalidDates
         );
     }
