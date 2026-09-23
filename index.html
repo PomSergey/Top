@@ -24,7 +24,7 @@ table{border-collapse:collapse;}
 td{padding:0 1px;white-space:nowrap;}
 .name{min-width:90px;}
 .vote-heading td{
-    color:#ff3b30!important;
+    color:#ffe066!important;
     font-weight:bold;
     font-size:20px;
     padding-top:12px;
@@ -40,17 +40,17 @@ td{padding:0 1px;white-space:nowrap;}
     width:250px;
     height:17px;
     overflow:hidden;
-    border:2px solid #00e5ff;
+    border:2px solid #6ee7f9;
     border-radius:10px;
-    background:rgba(0,229,255,.16);
+    background:rgba(0,35,50,.68);
     box-shadow:0 2px 3px rgba(0,0,0,.9);
 }
 .vote-bar-fill{
     height:100%;
     min-width:0;
     border-radius:7px;
-    background:linear-gradient(90deg,#00e5ff,#38ff89);
-    box-shadow:0 0 8px rgba(0,229,255,.9);
+    background:linear-gradient(90deg,#006d91,#009e6d);
+    box-shadow:0 0 8px rgba(0,109,145,.9);
     transition:width .5s ease;
 }
 .total{
@@ -86,12 +86,15 @@ const destinations = [
     'Филиппины',
     'Вьетнам',
     'Индонезия',
-    'Тайвань'
+    'Тайвань',
+    'Индия',
+    'Малайзия'
 ];
 const MAX_DONORS = 10;
 const REFRESH_MS = 5000;
 const DAY_TIME_ZONE = 'Europe/Moscow';
 const DAY_START_HOUR = 4;
+const VOTING_DEADLINE_DAY = Date.UTC(2026, 8, 30);
 
 function moscowDateKey(now = new Date()){
     // Новый донат-день начинается в 04:00 по Москве.
@@ -108,6 +111,50 @@ function moscowDateKey(now = new Date()){
     );
 
     return values.year + '-' + values.month + '-' + values.day;
+}
+
+function moscowCalendarDay(now = new Date()){
+    const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone:DAY_TIME_ZONE,
+        year:'numeric',
+        month:'2-digit',
+        day:'2-digit'
+    }).formatToParts(now);
+    const values = Object.fromEntries(
+        parts.map(part => [part.type, part.value])
+    );
+
+    return Date.UTC(
+        Number(values.year),
+        Number(values.month) - 1,
+        Number(values.day)
+    );
+}
+
+function russianDayWord(days){
+    const lastTwo = days % 100;
+    const last = days % 10;
+    if(lastTwo >= 11 && lastTwo <= 14) return 'ДНЕЙ';
+    if(last === 1) return 'ДЕНЬ';
+    if(last >= 2 && last <= 4) return 'ДНЯ';
+    return 'ДНЕЙ';
+}
+
+function votingHeading(now = new Date()){
+    const days = Math.max(
+        0,
+        Math.round(
+            (VOTING_DEADLINE_DAY - moscowCalendarDay(now)) /
+            (24 * 60 * 60 * 1000)
+        )
+    );
+    const countdown = days === 0
+        ? 'СЕГОДНЯ ПОСЛЕДНИЙ ДЕНЬ'
+        : (days === 1 ? 'ОСТАЛСЯ ' : 'ОСТАЛОСЬ ') +
+            days + ' ' + russianDayWord(days);
+
+    return 'ГОЛОСУЙ РУБЛЁМ. СЛЕДУЮЩАЯ СТРАНА (' +
+        countdown + '):';
 }
 
 function calendarDateKey(year, month, day){
@@ -294,7 +341,7 @@ function renderRanking(ranking){
 
     const heading = table.insertRow();
     heading.className = 'vote-heading';
-    addCell(heading, 'ГОЛОСУЙ РУБЛЁМ с 01 октября я еду на:', 4);
+    addCell(heading, votingHeading(), 4);
 
     const maxCountryAmount = Math.max(
         0,
