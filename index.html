@@ -414,9 +414,15 @@ function renderRanking(ranking){
     document.getElementById('status').textContent = messages.join('. ');
 }
 
-function readSheet(){
+let sheetRequestCounter = 0;
+
+function readSheetTab(sheetName, required = true){
     return new Promise((resolve, reject) => {
-        const callback = '__donationSheet_' + Date.now();
+        const callback =
+            '__donationSheet_' +
+            Date.now() +
+            '_' +
+            sheetRequestCounter++;
         const script = document.createElement('script');
         let timer;
 
@@ -433,6 +439,11 @@ function readSheet(){
                 response.status !== 'ok' ||
                 !Array.isArray(response.table?.rows)
             ){
+                if(!required){
+                    resolve([]);
+                    return;
+                }
+
                 reject(new Error('Google Sheets did not return a table'));
                 return;
             }
@@ -455,7 +466,7 @@ function readSheet(){
         }, 15000);
 
         const parameters = new URLSearchParams({
-            gid:'0',
+            sheet:sheetName,
             range:'A2:D',
             headers:'0',
             tqx:'out:json;responseHandler:' + callback,
@@ -474,7 +485,14 @@ function readSheet(){
 
 async function loadData(){
     try{
-        renderRanking(buildRanking(await readSheet()));
+        const [currentRows, archiveRows] = await Promise.all([
+            readSheetTab('Data'),
+            readSheetTab('Archive', false)
+        ]);
+
+        renderRanking(
+            buildRanking([...archiveRows, ...currentRows])
+        );
     } catch(error){
         console.warn('Не удалось обновить рейтинг', error);
 
