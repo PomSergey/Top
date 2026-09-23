@@ -85,7 +85,10 @@ td{padding:0 1px;white-space:nowrap;}
 }
 .vote-bar-label{
     position:absolute;
-    inset:0;
+    top:0;
+    bottom:0;
+    left:0;
+    width:100%;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -103,7 +106,6 @@ td{padding:0 1px;white-space:nowrap;}
 .vote-bar-label-filled{
     color:#071b1a;
     text-shadow:0 1px 0 rgba(255,255,255,.25);
-    clip-path:inset(0 calc(100% - var(--fill-percent)) 0 0);
 }
 .total{
     color:#ff9900!important;
@@ -300,6 +302,7 @@ function buildRanking(rows, now = new Date()){
     );
 
     let total = 0;
+    let allTimeTotal = 0;
     let invalidCountries = 0;
     let invalidDonations = 0;
     let invalidDates = 0;
@@ -316,6 +319,8 @@ function buildRanking(rows, now = new Date()){
             invalidDonations++;
             continue;
         }
+
+        allTimeTotal += amount;
 
         const date = donationDateKey(row[3]);
 
@@ -362,6 +367,7 @@ function buildRanking(rows, now = new Date()){
             ),
 
         total,
+        allTimeTotal,
         today,
         invalidCountries,
         invalidDonations,
@@ -377,6 +383,7 @@ function formatMoney(kopecks){
 
 function renderRanking(ranking){
     const table = document.createElement('table');
+    const barLabels = [];
 
     const addCell = (row, text, span = 1, className = '') => {
         const cell = document.createElement('td');
@@ -408,11 +415,6 @@ function renderRanking(ranking){
     countdown.textContent = '(' + votingHeading() + '):';
     headingCell.appendChild(countdown);
 
-    const maxCountryAmount = Math.max(
-        0,
-        ...ranking.countries.map(country => country.amount)
-    );
-
     ranking.countries.forEach((country, index) => {
         const row = table.insertRow();
         row.className = 'vote';
@@ -430,37 +432,34 @@ function renderRanking(ranking){
 
         const bar = document.createElement('div');
         bar.className = 'vote-bar';
-        const percent = maxCountryAmount
-            ? Number((country.amount / maxCountryAmount * 100).toFixed(1))
+        const percent = ranking.allTimeTotal
+            ? Number((country.amount / ranking.allTimeTotal * 100).toFixed(1))
             : 0;
         const percentText = String(percent).replace('.', ',') + '%';
-        bar.style.setProperty('--fill-percent', percent + '%');
         bar.setAttribute('role', 'meter');
         bar.setAttribute('aria-valuemin', '0');
         bar.setAttribute('aria-valuemax', '100');
         bar.setAttribute('aria-valuenow', String(percent));
         bar.setAttribute(
             'aria-label',
-            country.name + ': ' + percentText + ' от лидера'
+            country.name + ': ' + percentText + ' от всех донатов'
         );
 
         const fill = document.createElement('div');
         fill.className = 'vote-bar-fill';
         fill.style.width = percent + '%';
 
-        const emptyLabel = document.createElement('span');
-        emptyLabel.className = 'vote-bar-label vote-bar-label-empty';
-        emptyLabel.textContent = percentText;
-        emptyLabel.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.className = 'vote-bar-label vote-bar-label-empty';
+        label.setAttribute('aria-hidden', 'true');
+        const labelText = document.createElement('span');
+        labelText.textContent = percentText;
+        label.appendChild(labelText);
 
-        const filledLabel = document.createElement('span');
-        filledLabel.className = 'vote-bar-label vote-bar-label-filled';
-        filledLabel.textContent = percentText;
-        filledLabel.setAttribute('aria-hidden', 'true');
-
-        bar.append(fill, emptyLabel, filledLabel);
+        bar.append(fill, label);
         barCell.appendChild(bar);
         row.appendChild(barCell);
+        barLabels.push({fill, label, labelText});
     });
 
     const total = table.insertRow();
@@ -478,6 +477,17 @@ function renderRanking(ranking){
         '<div style="text-align:center;">или по ссылкам</div>';
 
     document.getElementById('table').replaceChildren(table, note);
+
+    barLabels.forEach(({fill, label, labelText}) => {
+        const fitsInsideFill =
+            fill.getBoundingClientRect().width >=
+            labelText.getBoundingClientRect().width + 8;
+
+        if(fitsInsideFill){
+            label.className = 'vote-bar-label vote-bar-label-filled';
+            label.style.width = fill.style.width;
+        }
+    });
 
     const messages = [];
 
