@@ -9,9 +9,15 @@ body{
     color:white;
     font-size:24px;
     font-family:Arial,sans-serif;
-    text-shadow:0 2px 3px rgba(0,0,0,.9);
-    -webkit-text-stroke:1px rgba(0,0,0,.9);
+    text-shadow:none;
+    -webkit-text-stroke:.7px rgba(0,0,0,.95);
     paint-order:stroke fill;
+}
+.overlay{
+    display:inline-block;
+    padding:6px 10px 8px;
+    border-radius:10px;
+    background:rgba(6,16,22,.62);
 }
 .title{
     color:#ff9900;
@@ -33,7 +39,7 @@ td{padding:0 1px;white-space:nowrap;}
 }
 .vote-countdown{font-size:12px;margin-left:4px;}
 .vote td{
-    color:#00e5ff!important;
+    color:#75d4df!important;
     font-weight:bold;
     font-size:20px;
     padding-bottom:3px;
@@ -90,16 +96,23 @@ td{padding:0 1px;white-space:nowrap;}
     line-height:1.15;
     display:inline-block;
 }
-.note-phone{font-weight:bold;}
+.note-phone{
+    color:#087839;
+    font-weight:bold;
+    -webkit-text-stroke:.7px rgba(255,255,255,.95);
+    text-shadow:none;
+}
 tr:nth-child(1){color:#ffd700;font-weight:bold;}
 tr:nth-child(n+2){color:white;}
 #status{color:#ff9900;font-size:16px;}
 </style>
 </head>
 <body>
+<div class="overlay">
 <div class="title">ВАША ПОДДЕРЖКА:</div>
 <div id="table">Загрузка...</div>
 <div id="status" role="status"></div>
+</div>
 
 <script>
 'use strict';
