@@ -45,9 +45,15 @@ td{padding:0 1px;white-space:nowrap;}
     padding-bottom:3px;
 }
 .vote-name{min-width:180px;}
-.vote-bar-cell{width:175px;padding-left:8px;}
+.vote-bar-cell{padding-left:8px;}
+.vote-bar-group{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
 .vote-bar{
     position:relative;
+    flex:0 0 175px;
     width:175px;
     height:14px;
     overflow:hidden;
@@ -83,29 +89,13 @@ td{padding:0 1px;white-space:nowrap;}
     background:linear-gradient(90deg,rgba(166,255,0,0),#d8ff65);
     box-shadow:0 0 7px rgba(174,255,0,.95);
 }
-.vote-bar-label{
-    position:absolute;
-    top:0;
-    bottom:0;
-    left:0;
-    width:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    pointer-events:none;
+.vote-percent{
+    color:#eaff75;
     white-space:nowrap;
-    font-size:11px;
+    font-size:17px;
     font-weight:800;
     line-height:1;
-    -webkit-text-stroke:0;
-}
-.vote-bar-label-empty{
-    color:#fff;
-    text-shadow:0 1px 1px #000;
-}
-.vote-bar-label-filled{
-    color:#071b1a;
-    text-shadow:0 1px 0 rgba(255,255,255,.25);
+    -webkit-text-stroke:.5px rgba(0,0,0,.95);
 }
 .total{
     color:#ff9900!important;
@@ -383,7 +373,6 @@ function formatMoney(kopecks){
 
 function renderRanking(ranking){
     const table = document.createElement('table');
-    const barLabels = [];
 
     const addCell = (row, text, span = 1, className = '') => {
         const cell = document.createElement('td');
@@ -449,17 +438,17 @@ function renderRanking(ranking){
         fill.className = 'vote-bar-fill';
         fill.style.width = percent + '%';
 
-        const label = document.createElement('span');
-        label.className = 'vote-bar-label vote-bar-label-empty';
-        label.setAttribute('aria-hidden', 'true');
-        const labelText = document.createElement('span');
-        labelText.textContent = percentText;
-        label.appendChild(labelText);
+        const percentLabel = document.createElement('span');
+        percentLabel.className = 'vote-percent';
+        percentLabel.textContent = percentText;
+        percentLabel.setAttribute('aria-hidden', 'true');
 
-        bar.append(fill, label);
-        barCell.appendChild(bar);
+        const barGroup = document.createElement('div');
+        barGroup.className = 'vote-bar-group';
+        bar.appendChild(fill);
+        barGroup.append(bar, percentLabel);
+        barCell.appendChild(barGroup);
         row.appendChild(barCell);
-        barLabels.push({fill, label, labelText});
     });
 
     const total = table.insertRow();
@@ -477,17 +466,6 @@ function renderRanking(ranking){
         '<div style="text-align:center;">или по ссылкам</div>';
 
     document.getElementById('table').replaceChildren(table, note);
-
-    barLabels.forEach(({fill, label, labelText}) => {
-        const fitsInsideFill =
-            fill.getBoundingClientRect().width >=
-            labelText.getBoundingClientRect().width + 8;
-
-        if(fitsInsideFill){
-            label.className = 'vote-bar-label vote-bar-label-filled';
-            label.style.width = fill.style.width;
-        }
-    });
 
     const messages = [];
 
