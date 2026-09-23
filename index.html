@@ -52,12 +52,29 @@ td{padding:0 1px;white-space:nowrap;}
         inset 0 0 4px rgba(0,0,0,.8);
 }
 .vote-bar-fill{
+    position:relative;
     height:100%;
     min-width:0;
+    overflow:hidden;
     border-radius:6px;
-    background:linear-gradient(90deg,#00c8f0,#63f5a8);
+    background:linear-gradient(
+        90deg,
+        #009dcc 0%,
+        #00e6b8 68%,
+        #a6ff00 100%
+    );
     box-shadow:inset 0 1px 0 rgba(255,255,255,.5);
     transition:width .5s ease;
+}
+.vote-bar-fill::after{
+    content:'';
+    position:absolute;
+    top:0;
+    right:0;
+    width:12px;
+    height:100%;
+    background:linear-gradient(90deg,rgba(166,255,0,0),#d8ff65);
+    box-shadow:0 0 7px rgba(174,255,0,.95);
 }
 .total{
     color:#ff9900!important;
@@ -342,8 +359,7 @@ function renderRanking(ranking){
 
         addCell(row, (medal + ' ' + (index + 1)).trim());
         addCell(row, donor.name, 1, 'name');
-        addCell(row, formatMoney(donor.amount));
-        addCell(row, '₽');
+        addCell(row, formatMoney(donor.amount) + ' ₽', 2);
     });
 
     const heading = table.insertRow();
@@ -363,11 +379,16 @@ function renderRanking(ranking){
         ...ranking.countries.map(country => country.amount)
     );
 
-    ranking.countries.forEach(country => {
+    ranking.countries.forEach((country, index) => {
         const row = table.insertRow();
         row.className = 'vote';
 
-        addCell(row, '- ' + country.name, 2, 'vote-name');
+        addCell(
+            row,
+            (index + 1) + '. ' + country.name,
+            2,
+            'vote-name'
+        );
 
         const barCell = document.createElement('td');
         barCell.colSpan = 2;
