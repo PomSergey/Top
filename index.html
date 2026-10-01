@@ -30,14 +30,13 @@ table{border-collapse:collapse;}
 td{padding:0 1px;white-space:nowrap;}
 .name{min-width:90px;padding-right:12px;}
 .vote-heading td{
-    color:#ff9900!important;
+    color:#75d4df!important;
     font-weight:bold;
-    font-size:16px;
+    font-size:20px;
     line-height:1.05;
     padding-top:12px;
     white-space:normal;
 }
-.vote-countdown{font-size:12px;margin-left:4px;}
 .vote td{
     color:#75d4df!important;
     font-weight:bold;
@@ -133,7 +132,6 @@ const SHEET_ID = '1sAXV8JkUMcH2km5rjaGfEhV44Nq8RE2TT3OWf05anOI';
 const destinations = [
     'Китай',
     'Филиппины',
-    'Вьетнам',
     'Индонезия',
     'Тайвань',
     'Индия',
@@ -143,7 +141,8 @@ const MAX_DONORS = 10;
 const REFRESH_MS = 5000;
 const DAY_TIME_ZONE = 'Europe/Moscow';
 const DAY_START_HOUR = 4;
-const VOTING_DEADLINE_DAY = Date.UTC(2026, 8, 30);
+// Новое голосование: сентябрьские донаты остаются в истории, но не влияют на шкалы.
+const VOTE_START_DATE = '2026-10-01';
 
 function moscowDateKey(now = new Date()){
     // Новый донат-день начинается в 04:00 по Москве.
@@ -160,49 +159,6 @@ function moscowDateKey(now = new Date()){
     );
 
     return values.year + '-' + values.month + '-' + values.day;
-}
-
-function moscowCalendarDay(now = new Date()){
-    const parts = new Intl.DateTimeFormat('en-GB', {
-        timeZone:DAY_TIME_ZONE,
-        year:'numeric',
-        month:'2-digit',
-        day:'2-digit'
-    }).formatToParts(now);
-    const values = Object.fromEntries(
-        parts.map(part => [part.type, part.value])
-    );
-
-    return Date.UTC(
-        Number(values.year),
-        Number(values.month) - 1,
-        Number(values.day)
-    );
-}
-
-function russianDayWord(days){
-    const lastTwo = days % 100;
-    const last = days % 10;
-    if(lastTwo >= 11 && lastTwo <= 14) return 'ДНЕЙ';
-    if(last === 1) return 'ДЕНЬ';
-    if(last >= 2 && last <= 4) return 'ДНЯ';
-    return 'ДНЕЙ';
-}
-
-function votingHeading(now = new Date()){
-    const days = Math.max(
-        0,
-        Math.round(
-            (VOTING_DEADLINE_DAY - moscowCalendarDay(now)) /
-            (24 * 60 * 60 * 1000)
-        )
-    );
-    const countdown = days === 0
-        ? 'СЕГОДНЯ ПОСЛЕДНИЙ ДЕНЬ'
-        : (days === 1 ? 'ОСТАЛСЯ ' : 'ОСТАЛОСЬ ') +
-            days + ' ' + russianDayWord(days);
-
-    return countdown;
 }
 
 function calendarDateKey(year, month, day){
@@ -309,8 +265,6 @@ function buildRanking(rows, now = new Date()){
             continue;
         }
 
-        allTimeTotal += amount;
-
         const date = donationDateKey(row[3]);
 
         // Ники и ИТОГО — только за сегодняшний день по Москве.
@@ -321,8 +275,11 @@ function buildRanking(rows, now = new Date()){
             invalidDates++;
         }
 
-        // Страны — за все сохранённые дни.
-        // Повторно в ИТОГО эти суммы не добавляются.
+        // Страны и их проценты — только с начала нового голосования.
+        // Старые строки остаются для истории и дневного рейтинга.
+        if(!date || date < VOTE_START_DATE) continue;
+        allTimeTotal += amount;
+
         const selected = String(row[2] ?? '').trim();
         if(!selected) continue;
 
@@ -393,15 +350,11 @@ function renderRanking(ranking){
 
     const heading = table.insertRow();
     heading.className = 'vote-heading';
-    const headingCell = addCell(
+    addCell(
         heading,
-        'ГОЛОСУЙ РУБЛЁМ. СЛЕДУЮЩАЯ СТРАНА',
+        'ГОЛОСУЙ ЗА СЛЕДУЮЩУЮ СТРАНУ (КУДА ПОЕХАТЬ):',
         4
     );
-    const countdown = document.createElement('span');
-    countdown.className = 'vote-countdown';
-    countdown.textContent = '(' + votingHeading() + '):';
-    headingCell.appendChild(countdown);
 
     ranking.countries.forEach((country, index) => {
         const row = table.insertRow();
