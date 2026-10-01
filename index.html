@@ -108,6 +108,7 @@ td{padding:0 1px;white-space:nowrap;}
     margin-top:2px;
     line-height:1.15;
     display:inline-block;
+    white-space:nowrap;
 }
 .note-phone{
     color:#fff;
@@ -352,7 +353,7 @@ function renderRanking(ranking){
     heading.className = 'vote-heading';
     addCell(
         heading,
-        'ГОЛОСУЙ ЗА СЛЕДУЮЩУЮ СТРАНУ (КУДА ПОЕХАТЬ):',
+        'ГОЛОСУЙ ЗА СЛЕДУЮЩУЮ СТРАНУ:',
         4
     );
 
@@ -414,8 +415,8 @@ function renderRanking(ranking){
     const note = document.createElement('div');
     note.className = 'note';
     note.innerHTML =
-        '<div>(по тел.: <span class="note-phone">+79800881969</span>)</div>' +
-        '<div style="text-align:center;">или по ссылкам</div>';
+        '(по тел.: <span class="note-phone">+79800881969</span>) ' +
+        'или по ссылкам';
 
     document.getElementById('table').replaceChildren(table, note);
 
