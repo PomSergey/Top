@@ -29,46 +29,39 @@ body{
 table{border-collapse:collapse;}
 td{padding:0 1px;white-space:nowrap;}
 .name{min-width:90px;padding-right:12px;}
-.vote-heading td{
+.goals-heading td{
     color:#75d4df!important;
     font-weight:bold;
     font-size:20px;
     line-height:1.05;
     padding-top:12px;
-    white-space:normal;
 }
-.vote td{
+.goal td{
     color:#75d4df!important;
     font-weight:bold;
     font-size:20px;
-    padding-bottom:3px;
+    padding-bottom:5px;
 }
-.vote-name{min-width:180px;}
-.vote-bar-cell{padding-left:8px;}
-.vote-bar-group{
-    display:flex;
-    align-items:center;
-    gap:8px;
-}
-.vote-bar{
+.goal-name{min-width:230px;padding-right:8px;}
+.goal-bar-cell{padding-left:8px;}
+.goal-bar{
     position:relative;
-    flex:0 0 175px;
-    width:175px;
-    height:14px;
+    width:190px;
+    height:24px;
     overflow:hidden;
     border:1px solid #58c9dc;
-    border-radius:7px;
+    border-radius:8px;
     background:rgba(15,35,44,.82);
     box-shadow:
         0 2px 3px rgba(0,0,0,.75),
         inset 0 0 4px rgba(0,0,0,.8);
 }
-.vote-bar-fill{
+.goal-bar-fill{
     position:relative;
     height:100%;
     min-width:0;
     overflow:hidden;
-    border-radius:6px;
+    border-radius:7px;
     background:linear-gradient(
         90deg,
         #009dcc 0%,
@@ -78,7 +71,7 @@ td{padding:0 1px;white-space:nowrap;}
     box-shadow:inset 0 1px 0 rgba(255,255,255,.5);
     transition:width .5s ease;
 }
-.vote-bar-fill::after{
+.goal-bar-fill::after{
     content:'';
     position:absolute;
     top:0;
@@ -88,12 +81,17 @@ td{padding:0 1px;white-space:nowrap;}
     background:linear-gradient(90deg,rgba(166,255,0,0),#d8ff65);
     box-shadow:0 0 7px rgba(174,255,0,.95);
 }
-.vote-percent{
-    color:#75d4df;
-    white-space:nowrap;
-    font-size:20px;
+.goal-bar-value{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-size:15px;
     font-weight:bold;
-    line-height:1;
+    -webkit-text-stroke:.35px rgba(0,0,0,.95);
+    text-shadow:0 1px 2px #000;
 }
 .total{
     color:#ff9900!important;
@@ -130,20 +128,16 @@ tr:nth-child(n+2){color:white;}
 'use strict';
 
 const SHEET_ID = '1sAXV8JkUMcH2km5rjaGfEhV44Nq8RE2TT3OWf05anOI';
-const destinations = [
-    'Китай',
-    'Филиппины',
-    'Индонезия',
-    'Тайвань',
-    'Индия',
-    'Малайзия'
+const GOALS = [
+    {name:'Стабилизатор', label:'СБОР НА СТАБИЛИЗАТОР', target:10000 * 100},
+    {name:'Филиппины', label:'СБОР НА ФИЛИППИНЫ', target:90000 * 100}
 ];
 const MAX_DONORS = 10;
 const REFRESH_MS = 5000;
 const DAY_TIME_ZONE = 'Europe/Moscow';
 const DAY_START_HOUR = 4;
-// Новое голосование: сентябрьские донаты остаются в истории, но не влияют на шкалы.
-const VOTE_START_DATE = '2026-10-01';
+// Старые голоса остаются в архиве; сборы начинаются с 3 октября.
+const GOALS_START_DATE = '2026-10-03';
 
 function moscowDateKey(now = new Date()){
     // Новый донат-день начинается в 04:00 по Москве.
@@ -243,13 +237,12 @@ function buildRanking(rows, now = new Date()){
     const today = moscowDateKey(now);
     const donors = new Map();
 
-    const votes = Object.fromEntries(
-        destinations.map(country => [country, 0])
+    const goalAmounts = Object.fromEntries(
+        GOALS.map(goal => [goal.name, 0])
     );
 
     let total = 0;
-    let allTimeTotal = 0;
-    let invalidCountries = 0;
+    let invalidGoals = 0;
     let invalidDonations = 0;
     let invalidDates = 0;
 
@@ -276,23 +269,21 @@ function buildRanking(rows, now = new Date()){
             invalidDates++;
         }
 
-        // Страны и их проценты — только с начала нового голосования.
-        // Старые строки остаются для истории и дневного рейтинга.
-        if(!date || date < VOTE_START_DATE) continue;
-        allTimeTotal += amount;
+        // Сборы суммируются между стримами, начиная с 3 октября.
+        if(!date || date < GOALS_START_DATE) continue;
 
         const selected = String(row[2] ?? '').trim();
         if(!selected) continue;
 
-        const country = destinations.find(item =>
-            item.toLocaleLowerCase('ru-RU') ===
+        const goal = GOALS.find(item =>
+            item.name.toLocaleLowerCase('ru-RU') ===
             selected.toLocaleLowerCase('ru-RU')
         );
 
-        if(country){
-            votes[country] += amount;
+        if(goal){
+            goalAmounts[goal.name] += amount;
         } else {
-            invalidCountries++;
+            invalidGoals++;
         }
     }
 
@@ -303,20 +294,14 @@ function buildRanking(rows, now = new Date()){
                 b.amount - a.amount || a.name.localeCompare(b.name, 'ru')
             ),
 
-        countries: destinations
-            .map((name, order) => ({
-                name,
-                amount:votes[name],
-                order
-            }))
-            .sort((a, b) =>
-                b.amount - a.amount || a.order - b.order
-            ),
+        goals: GOALS.map(goal => ({
+            ...goal,
+            amount:goalAmounts[goal.name]
+        })),
 
         total,
-        allTimeTotal,
         today,
-        invalidCountries,
+        invalidGoals,
         invalidDonations,
         invalidDates
     };
@@ -350,57 +335,48 @@ function renderRanking(ranking){
     });
 
     const heading = table.insertRow();
-    heading.className = 'vote-heading';
-    addCell(
-        heading,
-        'ГОЛОСУЙ ЗА СЛЕДУЮЩУЮ СТРАНУ:',
-        4
-    );
+    heading.className = 'goals-heading';
+    addCell(heading, 'СБОРЫ:', 4);
 
-    ranking.countries.forEach((country, index) => {
+    ranking.goals.forEach(goal => {
         const row = table.insertRow();
-        row.className = 'vote';
+        row.className = 'goal';
 
-        addCell(
-            row,
-            (index + 1) + '. ' + country.name,
-            2,
-            'vote-name'
-        );
+        addCell(row, goal.label, 2, 'goal-name');
 
         const barCell = document.createElement('td');
         barCell.colSpan = 2;
-        barCell.className = 'vote-bar-cell';
+        barCell.className = 'goal-bar-cell';
 
         const bar = document.createElement('div');
-        bar.className = 'vote-bar';
-        const percent = ranking.allTimeTotal
-            ? Number((country.amount / ranking.allTimeTotal * 100).toFixed(1))
-            : 0;
-        const percentText = String(percent).replace('.', ',') + '%';
-        bar.setAttribute('role', 'meter');
+        bar.className = 'goal-bar';
+        const percent = Math.min(goal.amount / goal.target * 100, 100);
+        const amountText = formatMoney(goal.amount) + ' / ' +
+            formatMoney(goal.target) + ' ₽';
+        bar.setAttribute('role', 'progressbar');
         bar.setAttribute('aria-valuemin', '0');
-        bar.setAttribute('aria-valuemax', '100');
-        bar.setAttribute('aria-valuenow', String(percent));
+        bar.setAttribute('aria-valuemax', String(goal.target / 100));
+        bar.setAttribute(
+            'aria-valuenow',
+            String(Math.min(goal.amount, goal.target) / 100)
+        );
         bar.setAttribute(
             'aria-label',
-            country.name + ': ' + percentText + ' от всех донатов'
+            goal.label + ': ' + amountText
         );
 
         const fill = document.createElement('div');
-        fill.className = 'vote-bar-fill';
+        fill.className = 'goal-bar-fill';
         fill.style.width = percent + '%';
 
-        const percentLabel = document.createElement('span');
-        percentLabel.className = 'vote-percent';
-        percentLabel.textContent = percentText;
-        percentLabel.setAttribute('aria-hidden', 'true');
+        const value = document.createElement('span');
+        value.className = 'goal-bar-value';
+        value.textContent = amountText;
+        value.setAttribute('aria-hidden', 'true');
 
-        const barGroup = document.createElement('div');
-        barGroup.className = 'vote-bar-group';
         bar.appendChild(fill);
-        barGroup.append(bar, percentLabel);
-        barCell.appendChild(barGroup);
+        bar.appendChild(value);
+        barCell.appendChild(bar);
         row.appendChild(barCell);
     });
 
@@ -422,10 +398,10 @@ function renderRanking(ranking){
 
     const messages = [];
 
-    if(ranking.invalidCountries){
+    if(ranking.invalidGoals){
         messages.push(
-            'Проверьте названия стран в столбце C: ' +
-            ranking.invalidCountries
+            'Проверьте цели в столбце C: ' +
+            ranking.invalidGoals
         );
     }
 
