@@ -15,9 +15,18 @@ body{
 }
 .overlay{
     display:inline-block;
-    padding:6px 10px 8px;
+    position:relative;
+    isolation:isolate;
+    padding:6px 10px 0;
+}
+.overlay::before{
+    content:'';
+    position:absolute;
+    inset:0 0 120px;
     border-radius:10px;
     background:rgba(6,16,22,.62);
+    z-index:-1;
+    pointer-events:none;
 }
 .title{
     color:#ff9900;
@@ -129,6 +138,7 @@ td{padding:0 1px;white-space:nowrap;}
     align-items:center;
     gap:5px;
     margin:0;
+    width:120px;
 }
 .qr-card a{display:block;line-height:0;}
 .qr-card img{
@@ -139,13 +149,26 @@ td{padding:0 1px;white-space:nowrap;}
     image-rendering:pixelated;
 }
 .qr-card figcaption{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    width:120px;
+    min-height:34px;
+    box-sizing:border-box;
     color:#fff;
-    font-size:15px;
+    font-size:12px;
     line-height:1.2;
-    font-weight:bold;
+    text-align:center;
     -webkit-text-stroke:0;
     text-shadow:0 1px 2px #000;
 }
+.qr-card figcaption strong{
+    color:#75d4df;
+    font-size:14px;
+    font-weight:bold;
+}
+body.qr-screen .overlay{padding-bottom:8px;}
+body.qr-screen .overlay::before{bottom:0;}
 body.qr-screen .qr-row{
     position:fixed;
     left:12px;
@@ -155,10 +178,11 @@ body.qr-screen .qr-row{
     pointer-events:none;
 }
 body.qr-screen .qr-card{
-    padding:7px;
-    border-radius:8px;
-    background:rgba(6,16,22,.62);
     pointer-events:auto;
+}
+body.qr-screen .qr-card figcaption{
+    border-radius:6px 6px 0 0;
+    background:rgba(6,16,22,.62);
 }
 tr:nth-child(1){color:#ffd700;font-weight:bold;}
 tr:nth-child(n+2){color:white;}
@@ -172,16 +196,16 @@ tr:nth-child(n+2){color:white;}
 <div id="status" role="status"></div>
 <div class="qr-row" aria-label="Поддержать через DonationAlerts или Donatty">
     <figure class="qr-card">
+        <figcaption><span>Поддержать стрим</span><strong>DonationAlerts</strong></figcaption>
         <a href="https://www.donationalerts.com/r/serg_myway?qr" target="_blank" rel="noopener noreferrer" aria-label="Страница доната DonationAlerts">
-            <img id="qr-donationalerts" src="assets/qr-donationalerts.png" width="120" height="120" alt="QR-код DonationAlerts">
+            <img id="qr-donationalerts" src="assets/qr-donationalerts.png?v=2" width="120" height="120" alt="QR-код DonationAlerts">
         </a>
-        <figcaption>DonationAlerts</figcaption>
     </figure>
     <figure class="qr-card">
+        <figcaption><span>Поддержать стрим</span><strong>Donatty</strong></figcaption>
         <a href="https://donatty.com/thesergey" target="_blank" rel="noopener noreferrer" aria-label="Страница доната Donatty">
-            <img id="qr-donatty" src="assets/qr-donatty.png" width="120" height="120" alt="QR-код Donatty">
+            <img id="qr-donatty" src="assets/qr-donatty.png?v=2" width="120" height="120" alt="QR-код Donatty">
         </a>
-        <figcaption>Donatty</figcaption>
     </figure>
 </div>
 </div>
