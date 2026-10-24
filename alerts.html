@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Оповещения DonationAlerts + Donatty</title>
+  <style>
+html, body { margin:0; width:100%; height:100%; overflow:hidden; background:transparent; }
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+#donatty { position:fixed; inset:0; width:100%; height:100%; border:0; background:transparent; pointer-events:none; }
+#stage { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.alert { width:min(92vw,650px); max-height:96vh; text-align:center; font-family:Arial,sans-serif; overflow:hidden; animation:appear .35s ease-out; }
+.alert-image { display:block; max-width:100%; max-height:55vh; width:auto; height:auto; margin:0 auto 12px; object-fit:contain; }
+.alert-title { margin:0; font-size:32px; line-height:1.15; font-weight:800; color:#ffae45; text-shadow:0 2px 3px #000,1px 0 #000,-1px 0 #000; overflow-wrap:anywhere; }
+.alert-message { margin:8px 0 0; padding:8px 12px; max-height:30vh; overflow:hidden; white-space:pre-wrap; overflow-wrap:anywhere; color:white; background:rgba(4,16,24,.78); border-radius:12px; font-size:24px; line-height:1.2; }
+.alert-source { margin:8px 0 0; color:#d7f7ff; font:14px Arial,sans-serif; text-shadow:0 1px 3px #000; }
+#status { position:fixed; top:8px; left:8px; padding:8px 12px; border-radius:8px; color:white; background:rgba(0,0,0,.8); font:14px monospace; white-space:pre-line; }
+#setup { position:fixed; inset:0; padding:24px; overflow:auto; background:#0e1d28; color:#edf9ff; font:16px/1.5 Arial,sans-serif; }
+#setup h1 { margin:0 0 12px; font-size:26px; }
+#setup form, #result { display:block; max-width:900px; }
+#setup label { display:block; margin:12px 0; }
+#setup input { display:block; width:100%; padding:12px; margin-top:6px; font:15px monospace; border:1px solid #6c98aa; border-radius:6px; }
+#setup button { padding:12px 18px; background:#76e7df; border:0; border-radius:6px; font-size:16px; cursor:pointer; }
+#setup a { color:#76e7df; }
+#setup-error { color:#ffbca7; }
+@keyframes appear { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@media (prefers-reduced-motion:reduce) { .alert { animation:none; } }
+
+  </style>
+</head>
+<body>
+  <iframe id="donatty" title="Оповещения Donatty" allow="autoplay" referrerpolicy="no-referrer" hidden></iframe>
+  <main id="stage" aria-live="polite"></main>
+  <aside id="status" hidden></aside>
+  <section id="setup" hidden>
+    <h1>Два сервиса — один источник PRISM</h1>
+    <p>Вставь ссылки на свои виджеты. Настройка выполняется в браузере; ключи не сохраняются в коде сайта.</p>
+    <form id="setup-form">
+      <label>DonationAlerts<input name="da" type="url" required autocomplete="off" placeholder="https://www.donationalerts.com/widget/alerts?…"></label>
+      <label>Donatty<input name="dt" type="url" required autocomplete="off" placeholder="https://widgets.donatty.com/donations/?…"></label>
+      <button>Создать общую ссылку</button>
+    </form>
+    <p id="setup-error" role="alert"></p>
+    <label id="result" hidden>Готовая ссылка — скопируй в Web-источник PRISM<input id="result-url" readonly></label>
+    <p>Для проверки оформления: <a href="?preview=1">демонстрация без подключения к сервисам</a>.</p>
+  </section>
+<script>
+'use strict';
+
+// Tokens belong only in the URL fragment, never in this public repository.
+(() => {
+  const params = new URLSearchParams(location.hash.slice(1));
+  const query = new URLSearchParams(location.search);
+  const stage = document.getElementById('stage');
+  const status = document.getElementById('status');
+  const states = {DonationAlerts:'подключение…', Donatty:'загрузка…'};
+  const pending = [];
+  const waitingKeys = new Set();
+  let settings = [], ttsMins = {}, active = null, socket = null;
+  let callbackNumber = 0, pollTimer, pollInFlight = false;
+  let seen = new Set(), saveSeen = () => {};
+  let stopped = false;
+
+  function report(provider, state) {
+    states[provider] = state;
+    status.textContent = Object.entries(states).map(([key,value]) => key + ': ' + value).join('\n');
+    status.hidden = !query.has('status');
+  }
+
+  function parseObject(raw, fallback) {
+    try { return typeof raw === 'string' ? JSON.parse(raw) : (raw ?? fallback); }
+    catch { return fallback; }
+  }
+
+  function makeConfig(daLink, dtLink) {
+    const da = new URL(daLink), dt = new URL(dtLink);
+    if (da.origin !== 'https://www.donationalerts.com' || da.pathname !== '/widget/alerts' ||
+        dt.origin !== 'https://widgets.donatty.com' || dt.pathname !== '/donations/') {
+      throw new Error('Нужны ссылки именно на виджеты DonationAlerts и Donatty.');
+    }
+    const result = new URLSearchParams({da:da.searchParams.get('token') || '', dt:dt.searchParams.get('token') || '',
+      ref:dt.searchParams.get('ref') || '', group:da.searchParams.get('group_id') || '1'});
+    validate(result);
+    return result;
+  }
+
+  function validate(config) {
+    if (!/^[\w-]{10,200}$/.test(config.get('da') || '') || !/^[\w-]{10,200}$/.test(config.get('dt') || '') ||
+        !/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(config.get('ref') || '') ||
+        !/^\d{1,3}$/.test(config.get('group') || '1')) {
+      throw new Error('В ссылках не найдены ключи виджетов. Скопируй полные ссылки из сервисов.');
+    }
+  }
+
+  const setup = document.getElementById('setup');
+  document.getElementById('setup-form').addEventListener('submit', event => {
+    event.preventDefault();
+    try {
+      const form = new FormData(event.currentTarget);
+      const fragment = makeConfig(form.get('da'), form.get('dt'));
+      const url = new URL(location.href);
+      url.search = ''; url.hash = fragment.toString();
+      document.getElementById('result-url').value = url.href;
+      document.getElementById('result').hidden = false;
+      document.getElementById('result-url').select();
+      document.getElementById('setup-error').textContent = '';
+    } catch(error) { document.getElementById('setup-error').textContent = error.message; }
+  });
+
+  function asset(value) {
+    if (!value) return '';
+    try {
+      const url = new URL(value, 'https://files.donationalerts.com/uploads/');
+      return url.protocol === 'https:' && /(^|\.)donationalerts\.com$/.test(url.hostname) ? url.href : '';
+    } catch { return ''; }
+  }
+
+  function chooseVariation(donation) {
+    const forced = settings.find(item => String(item.entity_id) === String(donation.force_variation) &&
+      Number(item.group_id) === Number(params.get('group') || '1') && Number(item.is_active) === 1 && Number(item.is_deleted) !== 1);
+    if (forced) return forced;
+    const amount = Number(donation.amount_main ?? donation.amount) || 0;
+    const candidates = [];
+    for (const variation of settings) {
+      if (Number(variation.group_id) !== Number(params.get('group') || '1') ||
+          Number(variation.is_active) !== 1 || Number(variation.is_deleted) === 1 || Number(variation.is_temporary_disabled) === 1) continue;
+      let score = 0, matches = true;
+      const conditions = parseObject(variation.variation_conditions, []);
+      for (const condition of conditions) {
+        const value = Number(condition.value);
+        switch (condition.mode) {
+          case 'alert_type': matches &&= value === Number(donation.alert_type ?? 1); break;
+          case 'random': break;
+          case 'amount_equal_to': matches &&= amount === value; score += 1000000 + value; break;
+          case 'amount_equal_or_greater_than': matches &&= amount >= value; score += value; break;
+          case 'amount_greater_than': matches &&= amount > value; score += value; break;
+          case 'amount_less_than': matches &&= amount < value; score += 1; break;
+          case 'amount_equal_or_less_than': matches &&= amount <= value; score += 1; break;
+          default: matches = false;
+        }
+      }
+      if (matches) candidates.push({variation, score});
+    }
+    candidates.sort((a,b) => b.score - a.score);
+    return candidates[0]?.variation ?? null;
+  }
+
+  function applyTextStyle(node, raw) {
+    const style = parseObject(raw, {})?.font_style ?? {};
+    // Only presentation properties; never accept arbitrary HTML or CSS.
+    for (const key of ['font-family','font-size','color','font-weight','font-style','text-decoration','text-transform','letter-spacing','word-spacing','text-align','background-color','border-radius']) {
+      if (style[key]) node.style.setProperty(key, String(style[key]));
+    }
+  }
+
+  function money(donation) {
+    const amount = Number(donation.amount);
+    return (Number.isFinite(amount) ? amount.toLocaleString('ru-RU',{maximumFractionDigits:2}) : String(donation.amount ?? '')) +
+      ' ' + ({RUB:'₽',USD:'$',EUR:'€'}[donation.currency] || donation.currency || '₽');
+  }
+
+  function playAudio(url, volume, owner) {
+    if (!url) return Promise.resolve();
+    return new Promise(resolve => {
+      const audio = new Audio(url);
+      audio.volume = Math.max(0,Math.min(1,Number(volume) / 100 || 0));
+      owner.audio.push(audio);
+      let finished = false;
+      const finish = () => { if (!finished) { finished = true; resolve(); } };
+      audio.addEventListener('ended', finish, {once:true});
+      audio.addEventListener('error', finish, {once:true});
+      audio.addEventListener('pause', finish, {once:true});
+      audio.play().catch(() => { report('Звук','браузер заблокировал воспроизведение'); finish(); });
+    });
+  }
+
+  async function speech(donation, variation, owner) {
+    const min = Number(ttsMins[donation.currency] ?? variation.tts_amount_min ?? 200);
+    if (!Number(variation.tts_is_enabled) || !donation.message || Number(donation.amount) < min || owner.cancelled) return;
+    const generated = asset(donation.tts_url);
+    if (generated) return playAudio(generated, variation.tts_volume ?? 50, owner);
+    // The service's original TTS API is same-origin only. Use a device voice if available.
+    if (!('speechSynthesis' in window)) { report('Озвучка DA','недоступна в этом браузере'); return; }
+    return new Promise(resolve => {
+      const utterance = new SpeechSynthesisUtterance(String(donation.message));
+      utterance.lang = String(variation.tts_language || 'ru_RU').replace('_','-');
+      utterance.volume = Math.max(0,Math.min(1,Number(variation.tts_volume ?? 50) / 100));
+      utterance.onend = resolve; utterance.onerror = resolve;
+      owner.cancelSpeech = resolve;
+      window.speechSynthesis.speak(utterance);
+    });
+  }
+
+  function finish() {
+    if (!active) return;
+    const current = active;
+    current.cancelled = true;
+    clearTimeout(current.timer);
+    clearTimeout(current.safety);
+    current.audio.forEach(audio => { audio.pause(); audio.removeAttribute('src'); audio.load(); });
+    if (current.cancelSpeech) { window.speechSynthesis?.cancel(); current.cancelSpeech(); }
+    active = null;
+    stage.replaceChildren();
+    if (!stopped) setTimeout(next, 400);
+  }
+
+  function next() {
+    if (active || stopped || !pending.length) return;
+    const {donation, variation, key} = pending.shift();
+    if (key) {
+      waitingKeys.delete(key);
+      seen.add(key); seen = new Set([...seen].slice(-1000)); saveSeen();
+    }
+    const owner = active = {donation, audio:[], cancelled:false};
+    const card = document.createElement('article'); card.className = 'alert';
+    const imageUrl = asset(variation.image);
+    if (imageUrl) {
+      const image = document.createElement('img'); image.className = 'alert-image'; image.alt = '';
+      image.src = imageUrl; image.addEventListener('error',()=>image.remove(),{once:true}); card.appendChild(image);
+    }
+    const title = document.createElement('h2'); title.className = 'alert-title';
+    const name = String(donation.username || donation.user_name || 'Аноним');
+    const template = String(variation.header_template || '{username} — {amount}');
+    title.textContent = template.replace(/\{username\}/g, () => name).replace(/\{amount\}/g, () => money(donation));
+    applyTextStyle(title, variation.header_text); card.appendChild(title);
+    if (donation.message) {
+      const message = document.createElement('p'); message.className = 'alert-message'; message.textContent = String(donation.message);
+      applyTextStyle(message, variation.message_text); card.appendChild(message);
+    }
+    if (donation.preview) {
+      const source = document.createElement('p'); source.className = 'alert-source'; source.textContent = donation.preview;
+      card.appendChild(source);
+    }
+    stage.replaceChildren(card);
+    const duration = Math.max(3,Math.min(120,Number(variation.display_duration) || 10)) * 1000;
+    let visualDone = false, soundDone = false;
+    const complete = () => { if (active === owner && visualDone && soundDone) finish(); };
+    owner.timer = setTimeout(()=>{visualDone = true;complete();}, duration);
+    // A failed network audio/TTS request must never block the donation queue forever.
+    owner.safety = setTimeout(()=>{if(active === owner) finish();},Math.max(duration + 15000,90000));
+    const playback = playAudio(asset(variation.sound), variation.volume ?? 50, owner);
+    const tts = async () => { if (!donation.preview && !owner.cancelled) await speech(donation, variation, owner); };
+    const audioDone = variation.tts_scenario === 'after_sound' ? playback.then(tts) : Promise.all([playback,tts()]);
+    audioDone.finally(()=>{soundDone = true;clearTimeout(owner.safety);complete();});
+  }
+
+  function receive(raw) {
+    const donation = parseObject(raw,null);
+    if (!donation || typeof donation !== 'object' || Number(donation.alert_type ?? 1) !== 1 || Number(donation.is_shown) === 1) return;
+    const id = String(donation.id ?? '');
+    const key = id && id !== '0' ? 'donation:' + id : '';
+    if (key && (seen.has(key) || waitingKeys.has(key))) return;
+    const variation = chooseVariation(donation);
+    if (!variation) return;
+    if (key) waitingKeys.add(key);
+    pending.push({donation,variation,key}); next();
+  }
+
+  function jsonp() {
+    return new Promise((resolve,reject) => {
+      const callback = '__daAlerts_' + (++callbackNumber);
+      const script = document.createElement('script');
+      const url = new URL('https://www.donationalerts.com/api/getwidgetdata/alerts');
+      url.search = new URLSearchParams({token:params.get('da'), group_id:params.get('group') || '1', callback, _:String(Date.now())}).toString();
+      let settled = false;
+      const cleanup = () => { clearTimeout(timer); script.remove(); window[callback] = () => {}; setTimeout(()=>delete window[callback],60000); };
+      const fail = () => { if (!settled) { settled = true; cleanup(); reject(new Error('settings unavailable')); } };
+      const timer = setTimeout(fail,15000);
+      window[callback] = data => { if (!settled) {settled = true; cleanup(); resolve(data);} };
+      script.referrerPolicy = 'no-referrer'; script.src = url.href; script.onerror = fail;
+      document.head.appendChild(script);
+    });
+  }
+
+  async function poll() {
+    if (stopped || pollInFlight) return;
+    pollInFlight = true;
+    clearTimeout(pollTimer);
+    try {
+      const data = await jsonp();
+      if (!Array.isArray(data.settings?.variations)) throw new Error('invalid settings');
+      settings = data.settings.variations; ttsMins = data.tts_mins || {};
+      (Array.isArray(data.alerts) ? data.alerts : Object.values(data.alerts || {}).flat()).forEach(receive);
+      report('Настройки DA','получены');
+    } catch { report('Настройки DA','повтор подключения…'); }
+    finally { pollInFlight = false; if (!stopped) pollTimer = setTimeout(poll,10000); }
+  }
+
+  function connectDA() {
+    const script = document.createElement('script');
+    script.src = 'https://www.donationalerts.com/js/socket.io-2.0.1.js'; script.referrerPolicy = 'no-referrer';
+    script.onload = () => {
+      if (stopped || !window.io) return;
+      socket = window.io('wss://socket1.donationalerts.com:443',{
+        transports:['websocket','polling'],reconnection:true,reconnectionDelay:2000,reconnectionDelayMax:30000,timeout:20000
+      });
+      socket.on('connect',()=>{socket.emit('add-user',{token:params.get('da')});report('DonationAlerts','соединение установлено');});
+      socket.on('disconnect',()=>report('DonationAlerts','переподключение…'));
+      socket.on('connect_error',()=>report('DonationAlerts','переподключение…'));
+      socket.on('donation',receive);
+      socket.on('update-alert_widget',()=>{clearTimeout(pollTimer);poll();});
+      socket.on('alert-show',raw=>{
+        const message = parseObject(raw,{});
+        if (message.action === 'skip') {
+          const index = pending.findIndex(item=>String(item.donation.id) === String(message.alert_id));
+          if (index >= 0) {
+            const [skipped] = pending.splice(index,1);
+            if (skipped.key) { waitingKeys.delete(skipped.key); seen.add(skipped.key); saveSeen(); }
+          }
+          if (String(active?.donation.id) === String(message.alert_id)) finish();
+        }
+      });
+    };
+    script.onerror = () => { report('DonationAlerts','повтор загрузки…'); if (!stopped) setTimeout(connectDA,15000); };
+    document.head.appendChild(script);
+  }
+
+  if (query.has('preview')) {
+    states.Donatty = 'демонстрация'; states.DonationAlerts = 'демонстрация';
+    const variation = {display_duration:5, header_template:'{username} — {amount}'};
+    pending.push({donation:{username:'Тест DonationAlerts',amount:200,currency:'RUB',message:'Так появится оповещение о донате',preview:'Демонстрация: без настоящего доната и без звука'},variation});
+    pending.push({donation:{username:'Тест общего источника',amount:500,currency:'RUB',message:'Оба сервиса работают в одной Web-ссылке',preview:'Donatty использует собственное оформление из личного кабинета'},variation});
+    next(); return;
+  }
+
+  try { validate(params); }
+  catch { setup.hidden = false; return; }
+
+  // Keep duplicate suppression across reloads without putting any token into storage.
+  try {
+    let hash = 2166136261;
+    for (const char of params.get('da')) hash = Math.imul(hash ^ char.charCodeAt(0),16777619);
+    const key = 'combined-alerts-seen-v1-' + (hash >>> 0);
+    const values = parseObject(localStorage.getItem(key),[]);
+    seen = new Set(Array.isArray(values) ? values.slice(-1000) : []);
+    saveSeen = () => { try { localStorage.setItem(key,JSON.stringify([...seen])); } catch {} };
+  } catch {}
+
+  const donatty = document.getElementById('donatty');
+  const dtURL = new URL('https://widgets.donatty.com/donations/');
+  dtURL.search = new URLSearchParams({ref:params.get('ref'),token:params.get('dt')}).toString();
+  donatty.addEventListener('load',()=>report('Donatty','страница загружена'));
+  donatty.src = dtURL.href; donatty.hidden = false;
+  // Obtain variations before listening so the first live notification can be rendered.
+  poll().then(connectDA);
+  window.addEventListener('pagehide',()=>{
+    stopped = true; clearTimeout(pollTimer); socket?.disconnect(); finish();
+  },{once:true});
+  window.addEventListener('pageshow',event=>{if(event.persisted) location.reload();});
+})();
+
+</script>
+</body>
+</html>
