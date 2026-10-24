@@ -110,7 +110,7 @@ td{padding:0 1px;white-space:nowrap;}
 }
 .note-phone{
     color:#75d4df;
-    font-size:23px;
+    font-size:24px;
     font-weight:bold;
     text-decoration:underline;
     text-decoration-thickness:1px;
@@ -133,7 +133,6 @@ tr:nth-child(n+2){color:white;}
 
 const SHEET_ID = '1sAXV8JkUMcH2km5rjaGfEhV44Nq8RE2TT3OWf05anOI';
 const GOALS = [
-    {name:'Стабилизатор', label:'СБОР НА СТАБИЛИЗАТОР', target:10000 * 100},
     {name:'Новый телефон', label:'СБОР НА НОВЫЙ ТЕЛЕФОН', target:50000 * 100}
 ];
 const MAX_DONORS = 10;
@@ -279,7 +278,7 @@ function buildRanking(rows, now = new Date()){
         const selected = String(row[2] ?? '').trim();
         if(!selected) continue;
         // Завершённый сбор остаётся в архиве и не считается ошибкой.
-        if(selected.toLocaleLowerCase('ru-RU') === 'филиппины') continue;
+        if(['филиппины', 'стабилизатор'].includes(selected.toLocaleLowerCase('ru-RU'))) continue;
 
         const goal = GOALS.find(item =>
             item.name.toLocaleLowerCase('ru-RU') ===
