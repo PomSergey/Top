@@ -14,19 +14,14 @@ body{
     paint-order:stroke fill;
 }
 .overlay{
-    display:inline-block;
-    position:relative;
-    isolation:isolate;
-    padding:6px 10px 0;
+    display:inline-flex;
+    flex-direction:column;
+    min-height:calc(100vh - 6px);
 }
-.overlay::before{
-    content:'';
-    position:absolute;
-    inset:0 0 120px;
+.support-panel{
+    padding:6px 10px 8px;
     border-radius:10px;
     background:rgba(6,16,22,.62);
-    z-index:-1;
-    pointer-events:none;
 }
 .title{
     color:#ff9900;
@@ -127,10 +122,13 @@ td{padding:0 1px;white-space:nowrap;}
 }
 .qr-row{
     display:flex;
+    flex:1;
+    flex-direction:column;
     justify-content:space-between;
-    align-items:flex-start;
-    gap:20px;
-    margin-top:10px;
+    align-items:flex-end;
+    gap:12px;
+    padding:0 10px;
+    margin-top:6px;
 }
 .qr-card{
     display:flex;
@@ -138,13 +136,13 @@ td{padding:0 1px;white-space:nowrap;}
     align-items:center;
     gap:5px;
     margin:0;
-    width:120px;
+    width:90px;
 }
 .qr-card a{display:block;line-height:0;}
 .qr-card img{
     display:block;
-    width:120px;
-    height:120px;
+    width:60px;
+    height:60px;
     background:white;
     image-rendering:pixelated;
 }
@@ -152,11 +150,11 @@ td{padding:0 1px;white-space:nowrap;}
     display:flex;
     flex-direction:column;
     justify-content:center;
-    width:120px;
-    min-height:34px;
+    width:90px;
+    min-height:28px;
     box-sizing:border-box;
     color:#fff;
-    font-size:12px;
+    font-size:10px;
     line-height:1.2;
     text-align:center;
     -webkit-text-stroke:0;
@@ -164,25 +162,8 @@ td{padding:0 1px;white-space:nowrap;}
 }
 .qr-card figcaption strong{
     color:#75d4df;
-    font-size:14px;
+    font-size:12px;
     font-weight:bold;
-}
-body.qr-screen .overlay{padding-bottom:8px;}
-body.qr-screen .overlay::before{bottom:0;}
-body.qr-screen .qr-row{
-    position:fixed;
-    left:12px;
-    right:12px;
-    bottom:12px;
-    margin:0;
-    pointer-events:none;
-}
-body.qr-screen .qr-card{
-    pointer-events:auto;
-}
-body.qr-screen .qr-card figcaption{
-    border-radius:6px 6px 0 0;
-    background:rgba(6,16,22,.62);
 }
 tr:nth-child(1){color:#ffd700;font-weight:bold;}
 tr:nth-child(n+2){color:white;}
@@ -191,20 +172,22 @@ tr:nth-child(n+2){color:white;}
 </head>
 <body>
 <div class="overlay">
+<div class="support-panel">
 <div class="title">ВАША ПОДДЕРЖКА:</div>
 <div id="table">Загрузка...</div>
 <div id="status" role="status"></div>
+</div>
 <div class="qr-row" aria-label="Поддержать через DonationAlerts или Donatty">
     <figure class="qr-card">
         <figcaption><span>Поддержать стрим</span><strong>DonationAlerts</strong></figcaption>
         <a href="https://www.donationalerts.com/r/serg_myway?qr" target="_blank" rel="noopener noreferrer" aria-label="Страница доната DonationAlerts">
-            <img id="qr-donationalerts" src="assets/qr-donationalerts.png?v=2" width="120" height="120" alt="QR-код DonationAlerts">
+            <img id="qr-donationalerts" src="assets/qr-donationalerts.png?v=2" width="60" height="60" alt="QR-код DonationAlerts">
         </a>
     </figure>
     <figure class="qr-card">
         <figcaption><span>Поддержать стрим</span><strong>Donatty</strong></figcaption>
         <a href="https://donatty.com/thesergey" target="_blank" rel="noopener noreferrer" aria-label="Страница доната Donatty">
-            <img id="qr-donatty" src="assets/qr-donatty.png?v=2" width="120" height="120" alt="QR-код Donatty">
+            <img id="qr-donatty" src="assets/qr-donatty.png?v=2" width="60" height="60" alt="QR-код Donatty">
         </a>
     </figure>
 </div>
@@ -213,11 +196,8 @@ tr:nth-child(n+2){color:white;}
 <script>
 'use strict';
 
-// Default: below the phone number. Optional full-canvas corner placement for PRISM.
-document.body.classList.toggle(
-    'qr-screen',
-    new URLSearchParams(location.search).get('qr') === 'screen'
-);
+// Both QR cards follow the ranking; the second sits at the viewport bottom
+// when there is room, and flows below the first when the ranking grows.
 
 const SHEET_ID = '1sAXV8JkUMcH2km5rjaGfEhV44Nq8RE2TT3OWf05anOI';
 const GOALS = [
